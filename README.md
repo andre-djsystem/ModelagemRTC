@@ -32,32 +32,35 @@ A solução está orientada a **dados**: você carrega as tabelas e usa a proced
 
 - **`CCLASSTRIB_OFICIAL`**: tabela **oficial** com descrição, CST, percentuais (`PREDIBS/PREDCBS`), vigência e *flags* por modelo (NFe/NFCe).  
 - **`TOP`**: tipo de operação (venda, devolução, bonificação, transferência…). Pode conter **cClassTrib fixo** (se preenchido, tem prioridade).  
-- **`PRODUTO`**: amarra o **NCM** ao **`REGRA_RTC`** do item (ex.: `ANEXO_1`, `ANEXO_9`, `ART_147`).  
 - **`TOP_PRODUTO`**: exceção por **operação+produto** (ex.: benefício para produtor rural em operação específica).  
+- **`PRODUTO`**: amarra o **NCM** ao **`REGRA_RTC`** do item (ex.: `ANEXO_1`, `ANEXO_9`, `ART_147`), permite informar um cClasstrib em caso de exceções.  
+- **`PARTICIPANTE`**: tipo de participante da operação (pessoa física, pessoa jurídica, órgão público, etc). 
 - **`NCM_CCLASSTRIB`**: **fallback**: mapeia **(NCM, REGRA_RTC)** para `CCLASSTRIB` (com colunas **ANEXO** e **ARTIGO** para busca). Mantém **todas** as aplicações distintas usando a convenção textual de `REGRA_RTC` descrita acima.
 
 ---
 
 ## ⚙️ Como o motor de resolução funciona
 
-A procedure **`RESOLVE_CCLASSTRIB`** recebe `(ID_TOP, ID_PRODUTO, DATA_EMISSAO, MODELO_DF)` e retorna:
+A procedure **`RESOLVE_CCLASSTRIB`** recebe `(ID_TOP, ID_PRODUTO, DATA_EMISSAO, MODELO_DF, ID_PARTICIPANTE)` e retorna:
 
-- `R_CCLASSTRIB`, `R_CST`, `R_FONTE` (TOP / TOP_PRODUTO / NCM), `R_PREDIBS`, `R_PREDCBS`.
+- `R_CCLASSTRIB`, `R_CST`, `R_FONTE` (TOP / TOP_PRODUTO / PRODUTO / NCM / NCM_PARTICIPANTE, NBS / NBS_PARTICIPANTE), `R_PREDIBS`, `R_PREDCBS`.
 
 **Ordem de prioridade**:
 1. **TOP**: se o `TOP.CCLASSTRIB` vier preenchido, ele **vence**.  
 2. **TOP_PRODUTO**: senão, tenta a exceção por operação+produto.  
-3. **NCM_CCLASSTRIB**: por fim, busca pelo par `(PRODUTO.NCM, PRODUTO.REGRA_RTC)` no fallback.
+3. **PRODUTO**: senão, tenta a exceção do produto.  
+4. **NCM_CCLASSTRIB**: busca por `(PRODUTO.NCM, PRODUTO.REGRA_RTC, ID_PARTICIPANTE)`. 
+5. **NCM_CCLASSTRIB**: por fim, busca pelo par `(PRODUTO.NCM, PRODUTO.REGRA_RTC)` no fallback.
 
 Em cada candidato, a procedure valida **vigência** (`VALIDA_VIGENCIA`) e **modelo** (`VALIDA_MODELO`). Se não houver nenhum válido, retorna `NULL` e o app pode aplicar `000001` (integral) ou tratar a exceção.
 
 > Exemplos (vide `comandos.sql`):
 >
 > ```sql
-> SELECT * FROM RESOLVE_CCLASSTRIB(1, 101, DATE '2026-02-01', 'NFe');   -- pão (Anexo I)
-> SELECT * FROM RESOLVE_CCLASSTRIB(1, 201, DATE '2026-02-01', 'NFe');   -- fertilizante (Anexo IX)
-> SELECT * FROM RESOLVE_CCLASSTRIB(2, 201, DATE '2026-02-01', 'NFe');   -- produtor rural (TOP_PRODUTO)
-> SELECT * FROM RESOLVE_CCLASSTRIB(1, 401, DATE '2026-02-01', 'NFe');   -- saúde menstrual (ART_147)
+> SELECT * FROM RESOLVE_CCLASSTRIB(1, 101, DATE '2026-02-01', 'NFe', 0);   -- pão (Anexo I)
+> SELECT * FROM RESOLVE_CCLASSTRIB(1, 201, DATE '2026-02-01', 'NFe', 0);   -- fertilizante (Anexo IX)
+> SELECT * FROM RESOLVE_CCLASSTRIB(2, 201, DATE '2026-02-01', 'NFe', 0);   -- produtor rural (TOP_PRODUTO)
+> SELECT * FROM RESOLVE_CCLASSTRIB(1, 401, DATE '2026-02-01', 'NFe', 0);   -- saúde menstrual (ART_147)
 > ```
 
 ---
@@ -83,7 +86,7 @@ Em cada candidato, a procedure valida **vigência** (`VALIDA_VIGENCIA`) e **mode
 > *Estes exemplos estão prontos para execução após as cargas de `dados-exemplo.sql` e `comandos.sql`.*
 
 - **Pão (Anexo I)**:  
-  `SELECT * FROM RESOLVE_CCLASSTRIB(1, 101, DATE '2026-02-01', 'NFe');`  
+  `SELECT * FROM RESOLVE_CCLASSTRIB(1, 101, DATE '2026-02-01', 'NFe', null);`  
   → fonte: **NCM** (*fallback*), retorna `200003` (redução 100%).
 
 - **Fertilizante (Anexo IX)** — venda comum vs. produtor rural:  
@@ -91,11 +94,11 @@ Em cada candidato, a procedure valida **vigência** (`VALIDA_VIGENCIA`) e **mode
   - Produtor rural: `RESOLVE_CCLASSTRIB(2, 201, ...)` → **TOP_PRODUTO** (exceção `515001`).
 
 - **Saúde menstrual (Art. 147)**:  
-  `SELECT * FROM RESOLVE_CCLASSTRIB(1, 401, DATE '2026-02-01', 'NFe');`  
+  `SELECT * FROM RESOLVE_CCLASSTRIB(1, 401, DATE '2026-02-01', 'NFe', null);`  
   → **ART_147** (NCM `96190000`) com `200013` (alíquota zero).
 
 - **Consulta por NCM**:  
-  `SELECT * FROM CCLASSTRIB_POR_NCM('94029090');`  
+  `SELECT * FROM CCLASSTRIB_POR_NCM('94029090', null);`  
   → Lista todas as aplicações mapeadas para o NCM (útil para auditoria).
 
 ---
