@@ -85,12 +85,10 @@ INSERT INTO NCM_NBS_CCLASSTRIB (NCM_NBS, REGRA_RTC, ID_PARTICIPANTE, TIPO, CCLAS
 ## Geração dos arquivos
 
 ### 1) `ncm_nbs_cclasstrib_inserts.sql`
-Gere **apenas INSERTs** no formato:
+Gere **apenas INSERTs** no formato, em apenas uma linha:
 
 ```sql
-INSERT INTO NCM_NBS_CCLASSTRIB
-(NCM_NBS, REGRA_RTC, ID_PARTICIPANTE, TIPO, CCLASSTRIB, ANEXO, ARTIGO)
-VALUES ('{NCM_NBS}', '{REGRA_RTC}', 0, '{TIPO}', '{CCLASSTRIB}', {ANEXO|NULL}, {ARTIGO|NULL});
+INSERT INTO NCM_NBS_CCLASSTRIB(NCM_NBS, REGRA_RTC, ID_PARTICIPANTE, TIPO, CCLASSTRIB, ANEXO, ARTIGO) VALUES ('{NCM_NBS}', '{REGRA_RTC}', 0, '{TIPO}', '{CCLASSTRIB}', {ANEXO|NULL}, {ARTIGO|NULL});
 ```
 
 - **Ordenação**: por `(NCM_NBS, REGRA_RTC, TIPO, CCLASSTRIB)`.
@@ -123,6 +121,7 @@ O arquivo de entrada pode estar no **layout antigo** (`NCM_CCLASSTRIB`) ou no **
    - Use comparação *case-sensitive* para `REGRA_RTC` e `CCLASSTRIB`.
 
 3. **`ncm_nbs_cclasstrib_delta.sql`**  
+   - Não remova linhas com a REGRA_RTC = `ART_9` pois foram adicionadas manualmente.
    - Para cada **REMOVIDA**: `DELETE` por chave primária `(NCM_NBS, REGRA_RTC, ID_PARTICIPANTE=0)`.  
    - Para cada **ALTERADA**: `DELETE` da versão antiga **e** `INSERT` da versão nova.  
    - Para cada **ADICIONADA**: apenas `INSERT`.  
