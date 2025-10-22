@@ -11,7 +11,7 @@ A solução está orientada a **dados**: você carrega as tabelas e usa a proced
 ## 🚀 Como começar
 
 1) **Crie o esquema** (tabelas + funções/procedures):  
-   Arquivo: `tabelas.sql` (inclui `CCLASSTRIB_OFICIAL`, `TOP`, `PRODUTO`, `TOP_PRODUTO`, `NCM_CCLASSTRIB`, `VALIDA_VIGENCIA`, `VALIDA_MODELO`, `VALIDA_CCLASSTRIB`, `RESOLVE_CCLASSTRIB` e `CCLASSTRIB_POR_NCM`).
+   Arquivo: `tabelas.sql` (inclui `CCLASSTRIB_OFICIAL`, `TOP`, `PARTICIPANTE`, `PRODUTO`, `TOP_PRODUTO`, `NCM_NBS_CCLASSTRIB`, `VALIDA_VIGENCIA`, `VALIDA_MODELO`, `VALIDA_CCLASSTRIB`, `RESOLVE_CCLASSTRIB` e `CCLASSTRIB_POR_NCM`).
 
 2) **Carregue a tabela oficial** de códigos e descrições:  
    Arquivo: `CCLASSTRIB_OFICIAL.sql` (espelho de códigos oficiais: descrição, CST, percentuais, vigência, indicadores por modelo).
@@ -35,7 +35,7 @@ A solução está orientada a **dados**: você carrega as tabelas e usa a proced
 - **`TOP_PRODUTO`**: exceção por **operação+produto** (ex.: benefício para produtor rural em operação específica).  
 - **`PRODUTO`**: amarra o **NCM** ao **`REGRA_RTC`** do item (ex.: `ANEXO_1`, `ANEXO_9`, `ART_147`), permite informar um cClasstrib em caso de exceções.  
 - **`PARTICIPANTE`**: tipo de participante da operação (pessoa física, pessoa jurídica, órgão público, etc). 
-- **`NCM_CCLASSTRIB`**: **fallback**: mapeia **(NCM, REGRA_RTC)** para `CCLASSTRIB` (com colunas **ANEXO** e **ARTIGO** para busca). Mantém **todas** as aplicações distintas usando a convenção textual de `REGRA_RTC` descrita acima.
+- **`NCM_NBS_CCLASSTRIB`**: **fallback**: mapeia **(NCM_NBS, REGRA_RTC)** para `CCLASSTRIB` (com colunas **ANEXO** e **ARTIGO** para busca). Mantém **todas** as aplicações distintas usando a convenção textual de `REGRA_RTC` descrita acima.
 
 ---
 
@@ -49,8 +49,8 @@ A procedure **`RESOLVE_CCLASSTRIB`** recebe `(ID_TOP, ID_PRODUTO, DATA_EMISSAO, 
 1. **TOP**: se o `TOP.CCLASSTRIB` vier preenchido, ele **vence**.  
 2. **TOP_PRODUTO**: senão, tenta a exceção por operação+produto.  
 3. **PRODUTO**: senão, tenta a exceção do produto.  
-4. **NCM_CCLASSTRIB**: busca por `(PRODUTO.NCM, PRODUTO.REGRA_RTC, ID_PARTICIPANTE)`. 
-5. **NCM_CCLASSTRIB**: por fim, busca pelo par `(PRODUTO.NCM, PRODUTO.REGRA_RTC)` no fallback.
+4. **NCM__NBS_CCLASSTRIB**: busca por `(PRODUTO.NCM, PRODUTO.REGRA_RTC, ID_PARTICIPANTE)`. 
+5. **NCM__NBS_CCLASSTRIB**: por fim, busca pelo par `(PRODUTO.NCM, PRODUTO.REGRA_RTC)` no fallback.
 
 Em cada candidato, a procedure valida **vigência** (`VALIDA_VIGENCIA`) e **modelo** (`VALIDA_MODELO`). Se não houver nenhum válido, retorna `NULL` e o app pode aplicar `000001` (integral) ou tratar a exceção.
 
@@ -107,7 +107,7 @@ Em cada candidato, a procedure valida **vigência** (`VALIDA_VIGENCIA`) e **mode
 
 - `tabelas.sql` — DDL completo do esquema + funções/procedures.  
 - `CCLASSTRIB_OFICIAL.sql` — carga do catálogo oficial (códigos, descrições, vigência, *flags*).  
-- `ncm_cclasstrib.sql` — carga de `NCM_CCLASSTRIB` (apenas `INSERT`s).  
+- `ncm_cclasstrib.sql` — carga de `NCM_NBS_CCLASSTRIB` (apenas `INSERT`s).  
 - `dados-exemplo.sql` — dados de exemplo para `TOP`, `PRODUTO`, `TOP_PRODUTO`.  
 - `comandos.sql` — consultas de demonstração (*how-to*) para explorar a solução.
 
@@ -116,7 +116,7 @@ Em cada candidato, a procedure valida **vigência** (`VALIDA_VIGENCIA`) e **mode
 ## ✅ Benefícios
 
 - **Zero decisão manual** no momento da emissão: tudo orientado por dados.  
-- **Priorização clara**: TOP → TOP_PRODUTO → NCM_CCLASSTRIB.  
+- **Priorização clara**: TOP → TOP_PRODUTO → NCM_NBS_CCLASSTRIB.  
 - **Compatibilidade legal**: vigência e modelo verificados a cada candidato.  
 - **Flexível e audível**: todas as hipóteses ficam **mapeadas** (inclusive múltiplas aplicações por NCM).  
 - **Portável**: implementado em **Firebird**, mas adaptável a qualquer SGBD relacional.
